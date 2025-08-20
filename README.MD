@@ -11,7 +11,7 @@ cd canvasPlayground
 
 # Usage
 
-1. **Create a Drawable object**  
+**Create a Drawable object**  
 All drawable objects extend base classes like `DrawableFunction`, `DrawableCircle`, `DrawableTriangle`, `DrawableLine`, or `DrawableText`.
 
 ```js
@@ -23,7 +23,7 @@ const myTriangle = new DrawableTriangle(
 );
 ```
 
-2. **Set up a Graph and ViewportManager**  
+**Set up a Graph and ViewportManager**  
 These handle world-to-canvas scaling and (optionally) grid/axes drawing.
 
 ```js
@@ -33,14 +33,14 @@ const vp = new ViewportManager(myApp.app,
 const graph = new Graph(vp, { numTicksX: 2, numTicksY: 2, color: "#aaa" });
 ```
 
-3. **Assign a graph to your drawable (optional)**  
+**Assign a graph to your drawable (optional)**  
 You can set `myTriangle.graph = graph`, or pass the graph as an argument to `.draw()`.
 
 ```js
 myTriangle.graph = graph; // optional
 ```
 
-4. **Draw in your render loop**  
+**Draw in your render loop**  
 Draw the grid/axes as a separate layer if desired, then draw your objects.
 
 ```js
@@ -50,7 +50,7 @@ myTriangle.draw(myApp.app, graph); // Draw your object
 myApp.render(); // Commit to canvas
 ```
 
-5. **Animate your object (optional)**  
+**Animate your object (optional)**  
 Update positions, rotation, or other properties on each frame:
 
 ```js
