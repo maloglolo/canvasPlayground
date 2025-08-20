@@ -27,7 +27,9 @@ const myTriangle = new DrawableTriangle(
 These handle world-to-canvas scaling and (optionally) grid/axes drawing.
 
 ```js
-const vp = new ViewportManager(myApp.app, { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }, () => [0, 0, 400, 400], true);
+const vp = new ViewportManager(myApp.app,
+                             { xMin: -1, xMax: 1, yMin: -1, yMax: 1 },
+                             () => [0, 0, 400, 400], true);
 const graph = new Graph(vp, { numTicksX: 2, numTicksY: 2, color: "#aaa" });
 ```
 
