@@ -246,19 +246,37 @@ class ViewportManager {
  * rasterizers
  * ============================== */
 function drawLine(app, x0, y0, x1, y1, color) {
+  const col = parseColor(color);
   x0 = Math.round(x0); y0 = Math.round(y0);
   x1 = Math.round(x1); y1 = Math.round(y1);
-  let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-  let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  let err = dx + dy;
 
-  const col = parseColor(color);
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+
+  let err = dx - dy;
+  const pixels = app.pixels;
+
+  const indices = [];
   while (true) {
-    app.putPixelBlend(x0, y0, col);
+    indices.push(y0 * app.size.x + x0);
     if (x0 === x1 && y0 === y1) break;
     const e2 = 2 * err;
-    if (e2 >= dy) { err += dy; x0 += sx; }
-    if (e2 <= dx) { err += dx; y0 += sy; }
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+  // blend pixels
+  for (const idx of indices) {
+    const i = idx * 4;
+    const da = pixels[i + 3] / 255;
+    const sa = col[3] / 255;
+    const outA = sa + da * (1 - sa);
+    const invA = 1 - sa;
+    pixels[i]     = Math.round((col[0] * sa + pixels[i] * da * invA) / outA);
+    pixels[i + 1] = Math.round((col[1] * sa + pixels[i + 1] * da * invA) / outA);
+    pixels[i + 2] = Math.round((col[2] * sa + pixels[i + 2] * da * invA) / outA);
+    pixels[i + 3] = Math.round(outA * 255);
   }
 }
 
@@ -304,32 +322,49 @@ function drawCircleOutline(app, cx, cy, r, color) {
 
 function fillCircle(app, cx, cy, r, color) {
   const col = parseColor(color);
-  let x = r, y = 0, err = 1 - x;
-  while (x >= y) {
-    for (let dx = -x; dx <= x; dx++) {
-      app.putPixelBlend(cx + dx, cy + y, col);
-      app.putPixelBlend(cx + dx, cy - y, col);
-    }
-    for (let dx = -y; dx <= y; dx++) {
-      app.putPixelBlend(cx + dx, cy + x, col);
-      app.putPixelBlend(cx + dx, cy - x, col);
-    }
-    y++;
-    if (err < 0) err += 2 * y + 1;
-    else {
-      x--;
-      err += 2 * (y - x + 1);
+  const r2 = r * r;
+  const xMin = Math.max(0, Math.floor(cx - r));
+  const xMax = Math.min(app.size.x - 1, Math.ceil(cx + r));
+  const yMin = Math.max(0, Math.floor(cy - r));
+  const yMax = Math.min(app.size.y - 1, Math.ceil(cy + r));
+
+  const pixels = app.pixels;
+  for (let y = yMin; y <= yMax; y++) {
+    const dy = y - cy;
+    const dy2 = dy * dy;
+    let idx = (y * app.size.x + xMin) * 4;
+    for (let x = xMin; x <= xMax; x++, idx += 4) {
+      const dx = x - cx;
+      if (dx * dx + dy2 <= r2) {
+        const da = pixels[idx + 3] / 255;
+        const sa = col[3] / 255;
+        const outA = sa + da * (1 - sa);
+        const invA = 1 - sa;
+        pixels[idx]     = Math.round((col[0] * sa + pixels[idx] * da * invA) / outA);
+        pixels[idx + 1] = Math.round((col[1] * sa + pixels[idx + 1] * da * invA) / outA);
+        pixels[idx + 2] = Math.round((col[2] * sa + pixels[idx + 2] * da * invA) / outA);
+        pixels[idx + 3] = Math.round(outA * 255);
+      }
     }
   }
 }
+// scanline method
+// https://uea-teaching.github.io/graphics1-2022/lectures/polygon-filling.html#/active-linked-list-7  
+// https://stackoverflow.com/questions/65573101/draw-a-filled-polygon-using-scanline-loop  
+// TODO: this is still slow
 
 function fillPolygon(app, points, color) {
   if (points.length < 3) return;
   const col = parseColor(color);
   const n = points.length;
   const rounded = points.map(p => [Math.round(p[0]), Math.round(p[1])]);
+
   let minY = Infinity, maxY = -Infinity;
   for (const [_, y] of rounded) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+  minY = Math.max(0, minY);
+  maxY = Math.min(app.size.y - 1, maxY);
+
+  const pixels = app.pixels;
 
   for (let y = minY; y <= maxY; y++) {
     const xs = [];
@@ -340,7 +375,19 @@ function fillPolygon(app, points, color) {
     }
     xs.sort((a, b) => a - b);
     for (let k = 0; k < xs.length; k += 2) {
-      for (let x = xs[k]; x <= xs[k + 1]; x++) app.putPixelBlend(x, y, col);
+      const xStart = Math.max(0, xs[k]);
+      const xEnd = Math.min(app.size.x - 1, xs[k + 1]);
+      let idx = (y * app.size.x + xStart) * 4;
+      for (let x = xStart; x <= xEnd; x++, idx += 4) {
+        const da = pixels[idx + 3] / 255;
+        const sa = col[3] / 255;
+        const outA = sa + da * (1 - sa);
+        const invA = 1 - sa;
+        pixels[idx]     = Math.round((col[0] * sa + pixels[idx] * da * invA) / outA);
+        pixels[idx + 1] = Math.round((col[1] * sa + pixels[idx + 1] * da * invA) / outA);
+        pixels[idx + 2] = Math.round((col[2] * sa + pixels[idx + 2] * da * invA) / outA);
+        pixels[idx + 3] = Math.round(outA * 255);
+      }
     }
   }
 }
