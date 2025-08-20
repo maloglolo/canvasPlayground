@@ -5,8 +5,8 @@
 # Installation
 
 ```bash
-git clone <your-repo-url>
-cd <repo-folder>
+git clone https://github.com/maloglolo/canvasPlayground
+cd canvasPlayground
 ```
 
 # Usage
