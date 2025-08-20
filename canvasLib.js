@@ -46,7 +46,9 @@ function parseColor(c) {
 
   return [255, 255, 255, 255];
 }
-
+//
+// https://en.wikipedia.org/wiki/Alpha_compositing
+//
 function blend(dst, sr, sg, sb, sa) {
   // dst: [dr,dg,db,da] (0-255 each), source as components
   const da = dst[3] / 255;
@@ -58,21 +60,34 @@ function blend(dst, sr, sg, sb, sa) {
   const b = (sb * saN + dst[2] * da * (1 - saN)) / outA;
   return [Math.round(r), Math.round(g), Math.round(b), Math.round(outA * 255)];
 }
+// blend + write directly into the ImageData buffer
+function blendPixel(pixels, idx, src) {
+  const dr = pixels[idx];
+  const dg = pixels[idx + 1];
+  const db = pixels[idx + 2];
+  const da = pixels[idx + 3];
+
+  const [r, g, b, a] = blend([dr, dg, db, da], src[0], src[1], src[2], src[3]);
+
+  pixels[idx] = r;
+  pixels[idx + 1] = g;
+  pixels[idx + 2] = b;
+  pixels[idx + 3] = a;
+}
 
 /* ==============================
  * ImageData buffer
  * ============================== */
 class CanvasApp {
-  constructor() {
-    this.canvas = document.querySelector("canvas");
+  constructor(canvas) {
+    this.canvas = canvas || document.querySelector("canvas");
     this.ctx = this.canvas.getContext("2d");
-    this.size = { x: window.innerWidth, y: window.innerHeight };
+    this.size = { x: this.canvas.width, y: this.canvas.height };
     this.resizeCanvas();
 
     this.buffer = this.ctx.createImageData(this.size.x, this.size.y);
-    this.pixels = this.buffer.data; // Uint8ClampedArray
+    this.pixels = this.buffer.data;
 
-    // offcreen canvas text
     this.textCanvas = document.createElement("canvas");
     this.textCtx = this.textCanvas.getContext("2d");
 
@@ -242,10 +257,56 @@ class ViewportManager {
   }
 }
 
+class DivCanvasApp {
+  constructor(containerDiv, options = {}) {
+    this.canvas = document.createElement("canvas");
+    containerDiv.appendChild(this.canvas);
+    this.canvas.style.width = "100%";
+    this.canvas.style.height = "100%";
+    this.canvas.style.display = "block";
+    this.canvas.style.background = options.background || "black";
+
+    this.app = new CanvasApp(this.canvas);
+
+    window.addEventListener("resize", () => this.resize());
+    this.resize();
+  }
+
+  resize() {
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    const w = Math.floor(rect.width);
+    const h = Math.floor(rect.height);
+    this.canvas.width = w;
+    this.canvas.height = h;
+    this.app.size = { x: w, y: h };
+    this.app.buffer = this.app.ctx.createImageData(w, h);
+    this.app.pixels = this.app.buffer.data;
+  }
+
+  clear() { this.app.clear(); }
+  render() { this.app.render(); }
+}
+
+
+function getDivViewport(div, targetAspect = 1) {
+  const rect = div.getBoundingClientRect();
+  let width = rect.width;
+  let height = rect.height;
+  const currentAspect = width / height;
+
+  if (currentAspect > targetAspect) width = height * targetAspect;
+  else height = width / targetAspect;
+
+  return { x: 0, y: 0, width, height }; // origin at canvas top-left
+}
+
+
 /* ==============================
  * rasterizers
  * ============================== */
-function drawLine(app, x0, y0, x1, y1, color) {
+
+// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+function rawLine(app, x0, y0, x1, y1, color) {
   const col = parseColor(color);
   x0 = Math.round(x0); y0 = Math.round(y0);
   x1 = Math.round(x1); y1 = Math.round(y1);
@@ -254,62 +315,41 @@ function drawLine(app, x0, y0, x1, y1, color) {
   const dy = Math.abs(y1 - y0);
   const sx = x0 < x1 ? 1 : -1;
   const sy = y0 < y1 ? 1 : -1;
-
   let err = dx - dy;
+
   const pixels = app.pixels;
 
-  const indices = [];
   while (true) {
-    indices.push(y0 * app.size.x + x0);
+    const idx = (y0 * app.size.x + x0) * 4;
+    blendPixel(pixels, idx, col);
+
     if (x0 === x1 && y0 === y1) break;
     const e2 = 2 * err;
     if (e2 > -dy) { err -= dy; x0 += sx; }
     if (e2 < dx) { err += dx; y0 += sy; }
   }
-  // blend pixels
-  for (const idx of indices) {
-    const i = idx * 4;
-    const da = pixels[i + 3] / 255;
-    const sa = col[3] / 255;
-    const outA = sa + da * (1 - sa);
-    const invA = 1 - sa;
-    pixels[i] = Math.round((col[0] * sa + pixels[i] * da * invA) / outA);
-    pixels[i + 1] = Math.round((col[1] * sa + pixels[i + 1] * da * invA) / outA);
-    pixels[i + 2] = Math.round((col[2] * sa + pixels[i + 2] * da * invA) / outA);
-    pixels[i + 3] = Math.round(outA * 255);
-  }
 }
 
-function drawThickLine(app, ax, ay, bx, by, width, color) {
-  const col = parseColor(color);
-  const dx = bx - ax, dy = by - ay;
-  const len = Math.hypot(dx, dy) || 1;
-  const ux = dx / len, uy = dy / len;
-  const px = -uy * width / 2, py = ux * width / 2;
+function strokeShape(app, points, color, width = 1) {
+  for (let i = 0; i < points.length; i++) {
+    const [x0, y0] = points[i];
+    const [x1, y1] = points[(i + 1) % points.length];
 
-  const poly = [
-    [ax + px, ay + py],
-    [bx + px, by + py],
-    [bx - px, by - py],
-    [ax - px, ay - py]
-  ];
-  fillPolygon(app, poly, col);
+    if (width <= 1) {
+      rawLine(app, x0, y0, x1, y1, color);
+      continue;
+    }
 
-  fillCircle(app, ax, ay, width / 2, col);
-  fillCircle(app, bx, by, width / 2, col);
-}
+    const dx = x1 - x0, dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const half = Math.floor(width / 2);
 
-function drawCircleOutline(app, cx, cy, r, color, segments = 64) {
-  const col = parseColor(color);
-  const pts = [];
-  for (let i = 0; i < segments; i++) {
-    const theta = (i / segments) * 2 * Math.PI;
-    pts.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
-  }
-  for (let i = 0; i < pts.length; i++) {
-    const [x0, y0] = pts[i];
-    const [x1, y1] = pts[(i + 1) % pts.length];
-    drawThickLine(app, x0, y0, x1, y1, 1, col);
+    for (let offset = -half; offset <= half; offset++) {
+      const ox = -uy * offset;
+      const oy = ux * offset;
+      rawLine(app, x0 + ox, y0 + oy, x1 + ox, y1 + oy, color);
+    }
   }
 }
 
@@ -344,7 +384,7 @@ function fillCircle(app, cx, cy, r, color) {
 // scanline method
 // https://uea-teaching.github.io/graphics1-2022/lectures/polygon-filling.html#/active-linked-list-7  
 // https://stackoverflow.com/questions/65573101/draw-a-filled-polygon-using-scanline-loop  
-// TODO: this is still slow
+// TODO: this is still slow -> linked-list Active Edge Table with proper scanline rules
 
 function fillPolygon(app, points, color) {
   if (points.length < 3) return;
@@ -502,8 +542,7 @@ class DrawableLine {
   draw(app, graph) {
     const [x0, y0] = graph.vp.worldToCanvas(this.p1.x, this.p1.y);
     const [x1, y1] = graph.vp.worldToCanvas(this.p2.x, this.p2.y);
-    if (this.width <= 1) drawLine(app, x0, y0, x1, y1, this.color);
-    else drawThickLine(app, x0, y0, x1, y1, this.width, this.color);
+    drawLine(app, x0, y0, x1, y1, this.color, this.width);
   }
 }
 
@@ -578,6 +617,18 @@ function projectYRotation(point, center, angle) {
   return { x: xRot, y: point.y };
 }
 
+const drawLine = (app, x0, y0, x1, y1, color, width = 1) =>
+  strokeShape(app, [[x0, y0], [x1, y1]], color, width);
+
+function drawCircleOutline(app, cx, cy, r, color, width = 1, segments = 128) {
+  const pts = [];
+  for (let i = 0; i < segments; i++) {
+    const theta = (i / segments) * 2 * Math.PI;
+    pts.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
+  }
+  strokeShape(app, pts, color, width);
+}
+
 class Intercepts {
   static findX(series) {
     const intercepts = [];
@@ -614,5 +665,7 @@ export {
   rotatePoint,
   rotateTriangleAroundCenter,
   rotateTriangleVertical,
-  projectYRotation
+  projectYRotation,
+  getDivViewport,
+  DivCanvasApp
 };
