@@ -35,7 +35,7 @@ function parseColor(c) {
   }
 
   // rgba(r,g,b,a)
-  const m = s.match(/^rgba?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+  const m = s.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*([01](?:\.\d+)?))?\s*\)$/i);
   if (m) {
     const r = Math.max(0, Math.min(255, Math.round(parseFloat(m[1]))));
     const g = Math.max(0, Math.min(255, Math.round(parseFloat(m[2]))));
@@ -273,50 +273,43 @@ function drawLine(app, x0, y0, x1, y1, color) {
     const sa = col[3] / 255;
     const outA = sa + da * (1 - sa);
     const invA = 1 - sa;
-    pixels[i]     = Math.round((col[0] * sa + pixels[i] * da * invA) / outA);
+    pixels[i] = Math.round((col[0] * sa + pixels[i] * da * invA) / outA);
     pixels[i + 1] = Math.round((col[1] * sa + pixels[i + 1] * da * invA) / outA);
     pixels[i + 2] = Math.round((col[2] * sa + pixels[i + 2] * da * invA) / outA);
     pixels[i + 3] = Math.round(outA * 255);
   }
 }
 
-function drawThickLine(app, x0, y0, x1, y1, width, color) {
-
-  width = Math.max(1, Math.round(width));
-  const radius = Math.floor(width / 2);
-  const points = [];
-  x0 = Math.round(x0); y0 = Math.round(y0);
-  x1 = Math.round(x1); y1 = Math.round(y1);
-  let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-  let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  let err = dx + dy;
-
-  while (true) {
-    points.push([x0, y0]);
-    if (x0 === x1 && y0 === y1) break;
-    const e2 = 2 * err;
-    if (e2 >= dy) { err += dy; x0 += sx; }
-    if (e2 <= dx) { err += dx; y0 += sy; }
-  }
+function drawThickLine(app, ax, ay, bx, by, width, color) {
   const col = parseColor(color);
-  for (const [px, py] of points) fillCircle(app, px, py, radius, col);
+  const dx = bx - ax, dy = by - ay;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const px = -uy * width / 2, py = ux * width / 2;
+
+  const poly = [
+    [ax + px, ay + py],
+    [bx + px, by + py],
+    [bx - px, by - py],
+    [ax - px, ay - py]
+  ];
+  fillPolygon(app, poly, col);
+
+  fillCircle(app, ax, ay, width / 2, col);
+  fillCircle(app, bx, by, width / 2, col);
 }
 
-function drawCircleOutline(app, cx, cy, r, color) {
-  cx = Math.round(cx); cy = Math.round(cy); r = Math.max(0, Math.round(r));
-  let x = r, y = 0, err = 0;
+function drawCircleOutline(app, cx, cy, r, color, segments = 64) {
   const col = parseColor(color);
-  while (x >= y) {
-    app.putPixelBlend(cx + x, cy + y, col);
-    app.putPixelBlend(cx + y, cy + x, col);
-    app.putPixelBlend(cx - y, cy + x, col);
-    app.putPixelBlend(cx - x, cy + y, col);
-    app.putPixelBlend(cx - x, cy - y, col);
-    app.putPixelBlend(cx - y, cy - x, col);
-    app.putPixelBlend(cx + y, cy - x, col);
-    app.putPixelBlend(cx + x, cy - y, col);
-    if (err <= 0) { y++; err += 2 * y + 1; }
-    if (err > 0) { x--; err -= 2 * x + 1; }
+  const pts = [];
+  for (let i = 0; i < segments; i++) {
+    const theta = (i / segments) * 2 * Math.PI;
+    pts.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
+  }
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[(i + 1) % pts.length];
+    drawThickLine(app, x0, y0, x1, y1, 1, col);
   }
 }
 
@@ -340,7 +333,7 @@ function fillCircle(app, cx, cy, r, color) {
         const sa = col[3] / 255;
         const outA = sa + da * (1 - sa);
         const invA = 1 - sa;
-        pixels[idx]     = Math.round((col[0] * sa + pixels[idx] * da * invA) / outA);
+        pixels[idx] = Math.round((col[0] * sa + pixels[idx] * da * invA) / outA);
         pixels[idx + 1] = Math.round((col[1] * sa + pixels[idx + 1] * da * invA) / outA);
         pixels[idx + 2] = Math.round((col[2] * sa + pixels[idx + 2] * da * invA) / outA);
         pixels[idx + 3] = Math.round(outA * 255);
@@ -383,7 +376,7 @@ function fillPolygon(app, points, color) {
         const sa = col[3] / 255;
         const outA = sa + da * (1 - sa);
         const invA = 1 - sa;
-        pixels[idx]     = Math.round((col[0] * sa + pixels[idx] * da * invA) / outA);
+        pixels[idx] = Math.round((col[0] * sa + pixels[idx] * da * invA) / outA);
         pixels[idx + 1] = Math.round((col[1] * sa + pixels[idx + 1] * da * invA) / outA);
         pixels[idx + 2] = Math.round((col[2] * sa + pixels[idx + 2] * da * invA) / outA);
         pixels[idx + 3] = Math.round(outA * 255);
