@@ -76,6 +76,6 @@ myTriangle.points = myTriangle.points.map(p => ({ x: p.x, y: p.y + 0.01 }));
 
 
 
-#TODO
+# TODO
 + add some ui
 + use real math > [https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html](https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html)
