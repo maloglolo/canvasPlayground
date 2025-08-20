@@ -63,3 +63,19 @@ myTriangle.points = myTriangle.points.map(p => ({ x: p.x, y: p.y + 0.01 }));
 - The grid/axes (`graph.draw(app)`) is always optional and is its own layer.
 - You can pass the `graph` to `.draw()` or set it as a property on the drawable.
 - This pattern works for all drawable objects provided by `canvasLib.js`.
+
+**Ressources:**
++ [https://en.wikipedia.org/wiki/Alpha_compositing](https://en.wikipedia.org/wiki/Alpha_compositing)
++ [https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm](https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
++ [https://developer.mozilla.org/en-US/docs/Web/API/ImageData](https://developer.mozilla.org/en-US/docs/Web/API/ImageData)
++ [https://html.spec.whatwg.org/multipage/imagebitmap-and-animations.html#imagedata](https://html.spec.whatwg.org/multipage/imagebitmap-and-animations.html#imagedata)
++ [https://2ality.com/2015/09/typed-arrays.html](https://2ality.com/2015/09/typed-arrays.html)
++   https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cachehttps://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache
++   [https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cachehttps://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache]()
++   [https://graphics.stanford.edu/courses/cs248-08/scan/scan1.html](https://graphics.stanford.edu/courses/cs248-08/scan/scan1.html)
+
+
+
+#TODO
++ add some ui
++ use real math > [https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html](https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html)
