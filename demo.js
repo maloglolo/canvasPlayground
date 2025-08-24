@@ -50,11 +50,11 @@ const triforceGraph = new Graph(triforceVP, { });
 // -------------------- WAVE DATA --------------------
 
 const baseTimeSeries = Array.from({ length: 500 }, (_, i) => {
-    const t = i * 0.01; // "time" axis
+    const t = i * 0.01;
     return {
         x: i,
-        y: Math.sin(2 * Math.PI * 0.06 * t) * Math.exp(-t * 0.01)   // 60Hz fundamental
-          + 0.2 * Math.sin(2 * Math.PI * 0.18 * t) * Math.exp(-t * 0.015) // 3rd harmonic
+        y: Math.sin(2 * Math.PI * 0.06 * t) * Math.exp(-t * 0.01)   
+          + 0.2 * Math.sin(2 * Math.PI * 0.18 * t) * Math.exp(-t * 0.015) 
     };
 });
 
@@ -65,8 +65,8 @@ const cachedSignals = Array.from({ length: numVariations }, (_, v) =>
         return {
             x: pt.x,
             y: pt.y
-              + 0.05 * Math.sin(2 * Math.PI * 0.06 * t + v * 0.1) // phase jitter
-              + 0.05 * (Math.random() - 0.5) // random noise
+              + 0.05 * Math.sin(2 * Math.PI * 0.06 * t + v * 0.1) 
+              + 0.05 * (Math.random() - 0.5) 
         };
     })
 );
@@ -150,7 +150,6 @@ function animate() {
     return new V2(pt.x, y1 * (1 - t) + y2 * t);
   });
 
-  // Triforce rotation
   const triforceAngle = (now * 0.001) % (2 * Math.PI);
   const applyYRotation = (original, tri) => {
     const center = new V2(
@@ -163,7 +162,6 @@ function animate() {
   applyYRotation(triLeftOriginal, triLeft);
   applyYRotation(triRightOriginal, triRight);
 
-  // Unit circle updates
   const angle = (now * 0.001) % (2 * Math.PI);
   ptB = new V2(Math.cos(angle), 0);
   ptC = new V2(Math.cos(angle), Math.sin(angle));
@@ -175,21 +173,18 @@ function animate() {
   labelB.pos = ptB;
   labelC.pos = ptC;
 
-  // Scatter jitter
   scatterPoints.forEach(p => {
     p.pos.x += (Math.random() - 0.5) * 0.02;
     p.pos.y += (Math.random() - 0.5) * 0.02;
   });
 
   // -------------------- RENDER --------------------
-  // Signal
   sineApp.clear();
   signalGraph.draw(sineApp.app, [cachedSignals[0].map(pt => new V2(pt.x, pt.y))]);
   signalWave.draw(sineApp.app, signalGraph);
   Intercepts.drawX(sineApp.app, signalGraph, signalWave.data, "yellow");
   sineApp.render();
 
-  // Unit circle
   unitApp.clear();
   unitGraph.draw(unitApp.app);
   circle.draw(unitApp.app, unitGraph);
@@ -201,14 +196,12 @@ function animate() {
   triangle.draw(unitApp.app, unitGraph);
   unitApp.render();
 
-  // Triforce
   triforceApp.clear();
   triTop.draw(triforceApp.app, triforceGraph);
   triLeft.draw(triforceApp.app, triforceGraph);
   triRight.draw(triforceApp.app, triforceGraph);
   triforceApp.render();
 
-  // Scatter
   scatterApp.clear();
   scatterGraph.draw(scatterApp.app);
   scatterPoints.forEach(p => p.draw(scatterApp.app, scatterGraph));

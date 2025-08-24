@@ -204,22 +204,34 @@ export class PixelBuffer {
     const src = srcImageData.data;
     const w = this.width, h = this.height;
     dx |= 0; dy |= 0;
-    let sy = 0;
-    for (; sy < sh; sy++) {
-      const ty = dy + sy; if (ty < 0 || ty >= h) continue;
-      const rowOff = (ty * w) | 0;
-      let sx = 0;
-      for (; sx < sw; sx++) {
-        const tx = dx + sx; if (tx < 0 || tx >= w) continue;
-        const sIdx = ((sy * sw + sx) | 0) * 4;
-        const dIdx = (((rowOff + tx) | 0) * 4) | 0;
-        const dr = this.pixels[dIdx], dg = this.pixels[dIdx + 1], db = this.pixels[dIdx + 2], da = this.pixels[dIdx + 3];
-        const sr = src[sIdx], sg = src[sIdx + 1], sb = src[sIdx + 2], sa = src[sIdx + 3];
-        const [r, g, b, a] = blendRGBA(dr, dg, db, da, sr, sg, sb, sa);
-        this.pixels[dIdx] = (r + 0.5) | 0; this.pixels[dIdx + 1] = (g + 0.5) | 0; this.pixels[dIdx + 2] = (b + 0.5) | 0; this.pixels[dIdx + 3] = (a + 0.5) | 0;
-      }
+
+    const startX = Math.max(0, dx);
+    const startY = Math.max(0, dy);
+    const endX = Math.min(w, dx + sw);
+    const endY = Math.min(h, dy + sh);
+
+    for (let sy = startY - dy; sy < endY - dy; sy++) {
+        const ty = dy + sy;
+        const rowOff = ty * w;
+        for (let sx = startX - dx; sx < endX - dx; sx++) {
+            const tx = dx + sx;
+            const sIdx = (sy * sw + sx) * 4;
+            const dIdx = (rowOff + tx) * 4;
+
+            // Inline blending
+            const dr = this.pixels[dIdx], dg = this.pixels[dIdx+1], db = this.pixels[dIdx+2], da = this.pixels[dIdx+3];
+            const sr = src[sIdx], sg = src[sIdx+1], sb = src[sIdx+2], sa = src[sIdx+3];
+            const alpha = sa / 255;
+            const invAlpha = 1 - alpha;
+
+            this.pixels[dIdx]     = (sr * alpha + dr * invAlpha + 0.5) | 0;
+            this.pixels[dIdx + 1] = (sg * alpha + dg * invAlpha + 0.5) | 0;
+            this.pixels[dIdx + 2] = (sb * alpha + db * invAlpha + 0.5) | 0;
+            this.pixels[dIdx + 3] = (sa * alpha + da * invAlpha + 0.5) | 0;
+        }
     }
-  }
+}
+
 }
 
 /* ==============================
@@ -311,7 +323,7 @@ export class CanvasRenderer {
 }
 
 /* ==============================
- * Text Cache (simple LRU)
+ * Text Cache 
  * ============================== */
 class TextCache {
   constructor(capacity = 256) {
@@ -395,7 +407,7 @@ export class ViewportManager {
     }
   }
 
-  unitsToPixels(units) { return units * this.scale.x; } // kept for back-compat (X scale)
+  unitsToPixels(units) { return units * this.scale.x; } 
 }
 
 /* ==============================
@@ -523,7 +535,7 @@ export function fillCircle(app, c, r, color) {
   }
 }
 
-// Efficient scanline polygon fill with Active Edge Table (AET)
+// scanline polygon fill (AET)
 // points: V2[]
 export function fillPolygon(app, points, color) {
   const col = toColor(color);
@@ -599,8 +611,8 @@ export class Graph {
 
     this.tickSizePx = options.tickSizePx ?? 6; // canvas pixels
 
-    this.numTicksX = options.numTicksX; // optional
-    this.numTicksY = options.numTicksY; // optional
+    this.numTicksX = options.numTicksX; 
+    this.numTicksY = options.numTicksY; 
     this.font = options.font || "12px sans-serif";
     this.textColor = options.textColor || "#fff";
     this.margin = options.margin || (this.vp.viewport?.margin || 30);
@@ -615,7 +627,6 @@ export class Graph {
       ({ xMin, xMax, yMin, yMax } = this.vp.worldBounds);
     }
 
-    // Auto-scale based on data series (tight bounds)
     if (this.autoScale && dataSeries.length > 0) {
       const allX = dataSeries.flatMap(series => series.map(p => p.x));
       const allY = dataSeries.flatMap(series => series.map(p => p.y));
@@ -879,7 +890,7 @@ export class DrawableText extends Drawable {
 /**
  *   DrawableLabel
  * - mode: "world" (default) uses world coords via viewport
- * - mode: "canvas" uses raw canvas pixels (e.g., UI captions)
+ * - mode: "canvas" uses raw canvas pixels
  */
 export class DrawableLabel extends Drawable {
   constructor(text, pos, {
