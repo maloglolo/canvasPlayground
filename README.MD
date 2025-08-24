@@ -34,19 +34,19 @@ const graph = new Graph(vp, { numTicksX: 2, numTicksY: 2, color: "#aaa" });
 ```
 
 **Assign a graph to your drawable (optional)**  
-You can set `myTriangle.graph = graph`, or pass the graph as an argument to `.draw()`.
+Set `myTriangle.graph = graph`, or pass the graph as an argument to `.draw()`.
 
 ```js
 myTriangle.graph = graph; // optional
 ```
 
 **Draw in your render loop**  
-Draw the grid/axes as a separate layer if desired, then draw your objects.
+Draw grid/axes as a separate layer
 
 ```js
 myApp.clear(); // Clear previous frame
 graph.draw(myApp.app); // Draw grid/axes (optional)
-myTriangle.draw(myApp.app, graph); // Draw your object
+myTriangle.draw(myApp.app, graph); // Draw object
 myApp.render(); // Commit to canvas
 ```
 
@@ -61,7 +61,7 @@ myTriangle.points = myTriangle.points.map(p => ({ x: p.x, y: p.y + 0.01 }));
 
 **Notes:**
 - The grid/axes (`graph.draw(app)`) is always optional and is its own layer.
-- You can pass the `graph` to `.draw()` or set it as a property on the drawable.
+- Pass the `graph` to `.draw()` or set it as a property on the drawable.
 - This pattern works for all drawable objects provided by `canvasLib.js`.
 
 **Ressources:**
