@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 
 const pageUrl = "/index.html";
 
-// selectors for your DOM
 const WRAPPERS = [
   "#signalWrapper",
   "#unitWrapper",
@@ -22,13 +21,11 @@ test.describe("Canvas graph app", () => {
 
     await page.goto(pageUrl);
 
-    // Basic sanity: wrappers exist
     for (const sel of WRAPPERS) {
       await expect(page.locator(sel)).toHaveCount(1);
       await expect(page.locator(`${sel} canvas`)).toHaveCount(1);
     }
 
-    // Give your rendering loop a tick to draw
     await page.waitForTimeout(150);
 
     expect(errors, "console.error messages").toEqual([]);
@@ -49,10 +46,8 @@ test.describe("Canvas graph app", () => {
     await page.goto(pageUrl);
     await page.waitForTimeout(100);
 
-    // record initial sizes
     const beforeSizes = await getCanvasSizes(page, WRAPPERS);
 
-    // Resize viewport
     await page.setViewportSize({ width: 800, height: 500 });
     await page.waitForTimeout(150);
 
@@ -62,13 +57,12 @@ test.describe("Canvas graph app", () => {
       const b = beforeSizes[i];
       const a = afterSizes[i];
 
-      // size should change in at least one dimension
       expect(
         a.width !== b.width || a.height !== b.height,
         `${WRAPPERS[i]} canvas size should react to viewport change`
       ).toBeTruthy();
 
-      // still drawing after resize
+
       const nonBgCount = await countNonBackgroundPixels(page, `${WRAPPERS[i]} canvas`, "#131313");
       expect(nonBgCount).toBeGreaterThan(500);
     }
@@ -78,7 +72,6 @@ test.describe("Canvas graph app", () => {
     await page.goto(pageUrl);
     await page.waitForTimeout(200);
 
-    // hide animations/variance if any (not strictly needed here)
     await page.evaluate(() => {
       document.body.style.animation = "none";
       document.body.style.transition = "none";
@@ -86,7 +79,7 @@ test.describe("Canvas graph app", () => {
 
     await expect(page).toHaveScreenshot("full-page.png", {
       fullPage: true,
-      // give a little slack for anti-aliasing
+
       maxDiffPixelRatio: 0.02,
     });
   });
@@ -108,7 +101,7 @@ async function countNonBackgroundPixels(page, canvasSelector: string, bgHex: str
         return [r, g, b, 255];
       }
 
-      const tol = 2; // allow tiny numerical differences
+      const tol = 2; // tolerance
       const [br, bgc, bb, ba] = hexToRGBA(bg);
       const can = document.querySelector(sel) as HTMLCanvasElement | null;
       if (!can) return 0;
