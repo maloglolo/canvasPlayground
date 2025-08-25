@@ -1,0 +1,8 @@
+*.swp
+.history/*
+node_modules/*
+.vscode/*
+a.txt
+b.txt
+tests/canvas.spec.ts-snapshots/*
+test-results

@@ -1,5 +1,5 @@
 /* ==============================
- * V2 and Transform2D (2D Affine)
+ * 2d vector, 2x3 matrix (2D Affine)
  * ============================== */
 
 export class V2 {
@@ -146,7 +146,7 @@ export function unpackABGR(px) {
 
 /**
  * Canonical porter-duff source-over blend (non-premultiplied inputs).
- * Returns [r,g,b,a] floats (0..255) — callers typically round/assign.
+ * Returns [r,g,b,a] floats (0..255) 
  */
 export function blendRGBA(dr, dg, db, da, sr, sg, sb, sa) {
   const dna = da / 255, sna = sa / 255;
