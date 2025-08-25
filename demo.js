@@ -1,81 +1,96 @@
 import {
-    Graph,
-    DrawableFunction,
-    DrawableCircle,
-    DrawableTriangle,
-    DrawableLine,
-    DrawableText,
-    ViewportManager,
-    getDivViewport,
-    DynamicCanvasRenderer,
-    projectYRotation,
-    V2,
-    Transform2D,
-    Intercepts,
-    DrawablePoint
-} from "./canvasLib.js";
+  Graph,
+  DrawableFunction,
+  DrawableCircle,
+  DrawableTriangle,
+  DrawableLine,
+  DrawableText,
+  DrawablePoint,
+  ViewportManager,
+  getDivViewport,
+  DynamicCanvasRenderer,
+  projectYRotation,
+  V2,
+  Intercepts,
+} from './dist/canvasLib.js';
 
 // -------------------- CANVAS APPS --------------------
-const sineApp = new DynamicCanvasRenderer(document.getElementById("signalWrapper"));
+const signalApp = new DynamicCanvasRenderer(document.getElementById("signalWrapper"));
 const unitApp = new DynamicCanvasRenderer(document.getElementById("unitWrapper"));
 const triforceApp = new DynamicCanvasRenderer(document.getElementById("triforceWrapper"));
+const scatterApp = new DynamicCanvasRenderer(document.getElementById("scatterWrapper"));
 
 // -------------------- VIEWPORTS --------------------
 const targetAspect = 1;
 
+const signalEl = document.getElementById("signalWrapper");
+if (!signalEl) throw new Error("signalWrapper not found");
+const signalRect = getDivViewport(signalEl, targetAspect);
+
 const signalVP = new ViewportManager(
-    sineApp.app,
-    null,
-    () => getDivViewport(document.getElementById("signalWrapper"), targetAspect)
+  signalApp.app,
+  { xMin: 0, xMax: 500, yMin: -1, yMax: 1 },
+  signalRect,
+  false 
 );
-const signalGraph = new Graph(signalVP, { color: "#aaa",margin: 10});
 
+const signalGraph = new Graph(signalVP, {});
+
+const unitEl = document.getElementById("unitWrapper");
 const unitVP = new ViewportManager(
-    unitApp.app,
-    { xMin: -1, xMax: 1, yMin: -1, yMax: 1 },
-    () => getDivViewport(document.getElementById("unitWrapper"), 1),
-    true
+  unitApp.app,
+  { xMin: -1, xMax: 1, yMin: -1, yMax: 1 },
+  getDivViewport(unitEl, 1),
+  "fit"
 );
-const unitGraph = new Graph(unitVP, { numTicksX: 2, numTicksY: 2, color: "#aaa" });
+const unitGraph = new Graph(unitVP, { numTicksX: 2, numTicksY: 2 });
 
-
+const triforceEl = document.getElementById("triforceWrapper");
 const triforceVP = new ViewportManager(
-    triforceApp.app,
-    { xMin: -1, xMax: 2, yMin: -0.5, yMax: 2 },
-    () => getDivViewport(document.getElementById("triforceWrapper"), targetAspect),
-    true
+  triforceApp.app,
+  { xMin: -1, xMax: 2, yMin: -0.5, yMax: 2 },
+  getDivViewport(triforceEl, targetAspect),
+  "fit"
 );
-const triforceGraph = new Graph(triforceVP, { });
+const triforceGraph = new Graph(triforceVP, {});
+
+const scatterEl = document.getElementById("scatterWrapper");
+const scatterVP = new ViewportManager(
+  scatterApp.app,
+  { xMin: -2, xMax: 2, yMin: -2, yMax: 2 },
+  getDivViewport(scatterEl, 1),
+  "fit"
+);
+const scatterGraph = new Graph(scatterVP, { numTicksX: 4, numTicksY: 4 });
+
 
 // -------------------- WAVE DATA --------------------
-
 const baseTimeSeries = Array.from({ length: 500 }, (_, i) => {
-    const t = i * 0.01;
-    return {
-        x: i,
-        y: Math.sin(2 * Math.PI * 0.06 * t) * Math.exp(-t * 0.01)   
-          + 0.2 * Math.sin(2 * Math.PI * 0.18 * t) * Math.exp(-t * 0.015) 
-    };
+  const t = i * 0.01;
+  return {
+    x: i,
+    y: Math.sin(2 * Math.PI * 0.06 * t) * Math.exp(-t * 0.01)
+      + 0.2 * Math.sin(2 * Math.PI * 0.18 * t) * Math.exp(-t * 0.015)
+  };
 });
 
 const numVariations = 100;
 const cachedSignals = Array.from({ length: numVariations }, (_, v) =>
-    baseTimeSeries.map((pt, i) => {
-        const t = i * 0.01;
-        return {
-            x: pt.x,
-            y: pt.y
-              + 0.05 * Math.sin(2 * Math.PI * 0.06 * t + v * 0.1) 
-              + 0.05 * (Math.random() - 0.5) 
-        };
-    })
+  baseTimeSeries.map((pt, i) => {
+    const t = i * 0.01;
+    return {
+      x: pt.x,
+      y: pt.y
+        + 0.05 * Math.sin(2 * Math.PI * 0.06 * t + v * 0.1)
+        + 0.05 * (Math.random() - 0.5)
+    };
+  })
 );
 
 const signalWave = new DrawableFunction(
-    cachedSignals[0].map(pt => new V2(pt.x, pt.y)),
-    { color: "lime", fill: false }
+  cachedSignals[0].map(pt => new V2(pt.x, pt.y)),
+  { color: "lime", fill: false }
 );
-signalWave.graph = signalGraph;
 
 // -------------------- UNIT CIRCLE --------------------
 const circle = new DrawableCircle(new V2(0, 0), 1, { color: "cyan" });
@@ -85,7 +100,9 @@ let ptB = new V2(Math.cos(Math.PI / 6), 0);
 let ptC = new V2(Math.cos(Math.PI / 6), Math.sin(Math.PI / 6));
 
 const triangle = new DrawableTriangle(ptA, ptB, ptC, {
-    color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.3)"
+  color: "yellow",
+  fill: true,
+  fillColor: "rgba(255,255,0,0.3)"
 });
 const lineSine = new DrawableLine(ptC, new V2(ptC.x, 0), { color: "cyan", width: 2 });
 const lineTangent = new DrawableLine(ptB, ptC, { color: "magenta", width: 2 });
@@ -97,44 +114,46 @@ const labelC = new DrawableText("C", ptC, { color: "white" });
 // -------------------- TRIFORCE --------------------
 const triforceSize = 0.5;
 const makeTriangle = (x, y) => [
-    new V2(x - triforceSize / 2, y),
-    new V2(x + triforceSize / 2, y),
-    new V2(x, y + triforceSize)
+  new V2(x - triforceSize / 2, y),
+  new V2(x + triforceSize / 2, y),
+  new V2(x, y + triforceSize)
 ];
 
 const triTopOriginal = makeTriangle(0.5, 1);
 const triLeftOriginal = makeTriangle(0.25, 0.5);
 const triRightOriginal = makeTriangle(0.75, 0.5);
 
-const triTop = new DrawableTriangle(...triTopOriginal, { color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.5)" });
-const triLeft = new DrawableTriangle(...triLeftOriginal, { color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.5)" });
-const triRight = new DrawableTriangle(...triRightOriginal, { color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.5)" });
-
+const triTop = new DrawableTriangle(
+  triTopOriginal[0], triTopOriginal[1], triTopOriginal[2],
+  { color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.5)" }
+);
+const triLeft = new DrawableTriangle(
+  triLeftOriginal[0], triLeftOriginal[1], triLeftOriginal[2],
+  { color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.5)" }
+);
+const triRight = new DrawableTriangle(
+  triRightOriginal[0], triRightOriginal[1], triRightOriginal[2],
+  { color: "yellow", fill: true, fillColor: "rgba(255,255,0,0.5)" }
+);
 
 // -------------------- SCATTER PLOT --------------------
-const scatterApp = new DynamicCanvasRenderer(document.getElementById("scatterWrapper"));
-const scatterVP = new ViewportManager(
-  scatterApp.app,
-  { xMin: -2, xMax: 2, yMin: -2, yMax: 2 },
-  () => getDivViewport(document.getElementById("scatterWrapper"), 1),
-  true
-);
-const scatterGraph = new Graph(scatterVP, { numTicksX: 4, numTicksY: 4, color: "#888" });
-
 const NUM_POINTS = 50;
-const scatterPoints = Array.from({ length: NUM_POINTS }, () => {
-  return new DrawablePoint(
+const scatterPoints = Array.from({ length: NUM_POINTS }, () =>
+  new DrawablePoint(
     new V2((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3),
-    { color: Math.random() < 0.5 ? "magenta" : "cyan", size: 3, cross: Math.random() < 0.5 }
-  );
-});
+    {
+      color: Math.random() < 0.5 ? "magenta" : "cyan",
+      size: 3,
+      type: Math.random() < 0.5 ? "cross" : "circle"
+    }
+  )
+);
 
 // -------------------- MAIN ANIMATE LOOP --------------------
 const loopDuration = 4000;
 let startTime = performance.now();
+
 function animate() {
-
-
   const now = performance.now();
   const elapsed = now - startTime;
   const loopProgress = (elapsed % loopDuration) / loopDuration;
@@ -156,7 +175,11 @@ function animate() {
       (original[0].x + original[1].x + original[2].x) / 3,
       (original[0].y + original[1].y + original[2].y) / 3
     );
-    tri.points = original.map(p => projectYRotation(p, center, triforceAngle));
+    tri.points = [
+      projectYRotation(original[0], center, triforceAngle),
+      projectYRotation(original[1], center, triforceAngle),
+      projectYRotation(original[2], center, triforceAngle)
+    ];
   };
   applyYRotation(triTopOriginal, triTop);
   applyYRotation(triLeftOriginal, triLeft);
@@ -174,16 +197,18 @@ function animate() {
   labelC.pos = ptC;
 
   scatterPoints.forEach(p => {
-    p.pos.x += (Math.random() - 0.5) * 0.02;
-    p.pos.y += (Math.random() - 0.5) * 0.02;
+    p.pos = new V2(
+      p.pos.x + (Math.random() - 0.5) * 0.02,
+      p.pos.y + (Math.random() - 0.5) * 0.02
+    );
   });
 
   // -------------------- RENDER --------------------
-  sineApp.clear();
-  signalGraph.draw(sineApp.app, [cachedSignals[0].map(pt => new V2(pt.x, pt.y))]);
-  signalWave.draw(sineApp.app, signalGraph);
-  Intercepts.drawX(sineApp.app, signalGraph, signalWave.data, "yellow");
-  sineApp.render();
+  signalApp.clear();
+  signalGraph.draw(signalApp.app);
+  signalWave.draw(signalApp.app, signalGraph);
+  Intercepts.drawX(signalApp.app, signalGraph, signalWave.data, "yellow");
+  signalApp.render();
 
   unitApp.clear();
   unitGraph.draw(unitApp.app);
@@ -209,4 +234,5 @@ function animate() {
 
   requestAnimationFrame(animate);
 }
+
 animate();

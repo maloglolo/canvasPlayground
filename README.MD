@@ -1,9 +1,8 @@
-# Demo 
 
+# Demo
 [https://maloglolo.github.io/canvasPlayground/](https://maloglolo.github.io/canvasPlayground/)
 
 # Installation
-
 ```bash
 git clone https://github.com/maloglolo/canvasPlayground
 cd canvasPlayground
@@ -11,10 +10,10 @@ cd canvasPlayground
 
 # Usage
 
-**Create a Drawable object**  
-All drawable objects extend base classes like `DrawableFunction`, `DrawableCircle`, `DrawableTriangle`, `DrawableLine`, or `DrawableText`.
+**Create Drawable objects**  
+All extend `DrawableFunction`, `DrawableCircle`, `DrawableTriangle`, `DrawableLine`, `DrawableText`.
 
-```js
+```ts
 const myTriangle = new DrawableTriangle(
   { x: 0, y: 0 },
   { x: 1, y: 0 },
@@ -23,59 +22,45 @@ const myTriangle = new DrawableTriangle(
 );
 ```
 
-**Set up a Graph and ViewportManager**  
-These handle world-to-canvas scaling and (optionally) grid/axes drawing.
+**Graph + ViewportManager**  
+Handles world-to-canvas mapping and optional grid/axes.
 
-```js
-const vp = new ViewportManager(myApp.app,
-                             { xMin: -1, xMax: 1, yMin: -1, yMax: 1 },
-                             () => [0, 0, 400, 400], true);
+```ts
+const vp = new ViewportManager(app.app, { xMin: -1, xMax: 1, yMin: -1, yMax: 1 }, () => [0,0,400,400], true);
 const graph = new Graph(vp, { numTicksX: 2, numTicksY: 2, color: "#aaa" });
 ```
 
-**Assign a graph to your drawable (optional)**  
-Set `myTriangle.graph = graph`, or pass the graph as an argument to `.draw()`.
+**Draw**  
+Pass the graph or assign it to the drawable.
 
-```js
-myTriangle.graph = graph; // optional
+```ts
+app.clear();
+graph.draw(app.app);          // optional grid/axes
+myTriangle.draw(app.app, graph);
+app.render();
 ```
 
-**Draw in your render loop**  
-Draw grid/axes as a separate layer
+**Animate**  
+Update drawable properties each frame:
 
-```js
-myApp.clear(); // Clear previous frame
-graph.draw(myApp.app); // Draw grid/axes (optional)
-myTriangle.draw(myApp.app, graph); // Draw object
-myApp.render(); // Commit to canvas
-```
-
-**Animate your object (optional)**  
-Update positions, rotation, or other properties on each frame:
-
-```js
+```ts
 myTriangle.points = myTriangle.points.map(p => ({ x: p.x, y: p.y + 0.01 }));
 ```
 
----
+# Notes
+- `graph.draw(app)` is optional; grid/axes are separate.
+- Pass `graph` to `.draw()` or set as `myDrawable.graph`.
+- Works for all drawables in `canvasLib.js`.
 
-**Notes:**
-- The grid/axes (`graph.draw(app)`) is always optional and is its own layer.
-- Pass the `graph` to `.draw()` or set it as a property on the drawable.
-- This pattern works for all drawable objects provided by `canvasLib.js`.
-
-**Ressources:**
-+ [https://en.wikipedia.org/wiki/Alpha_compositing](https://en.wikipedia.org/wiki/Alpha_compositing)
-+ [https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm](https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
-+ [https://developer.mozilla.org/en-US/docs/Web/API/ImageData](https://developer.mozilla.org/en-US/docs/Web/API/ImageData)
-+ [https://html.spec.whatwg.org/multipage/imagebitmap-and-animations.html#imagedata](https://html.spec.whatwg.org/multipage/imagebitmap-and-animations.html#imagedata)
-+ [https://2ality.com/2015/09/typed-arrays.html](https://2ality.com/2015/09/typed-arrays.html)
-+   [https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache](https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache)
-+   [https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache](https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache)
-+   [https://graphics.stanford.edu/courses/cs248-08/scan/scan1.html](https://graphics.stanford.edu/courses/cs248-08/scan/scan1.html)
-
-
+# Resources
+- [Alpha compositing](https://en.wikipedia.org/wiki/Alpha_compositing)
+- [Bresenham's line algorithm](https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
+- [ImageData API](https://developer.mozilla.org/en-US/docs/Web/API/ImageData)
+- [Typed arrays](https://2ality.com/2015/09/typed-arrays.html)
+- [LRU Cache](https://www.enjoyalgorithms.com/blog/implement-least-recently-used-cache)
+- [2D transforms](https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html)
 
 # TODO
-+ add some ui
-+ use real math > [https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html](https://dododas.github.io/linear-algebra-with-python/posts/16-12-29-2d-transformations.html)
+- Add UI
+- Fix scaling
+```
