@@ -7,6 +7,7 @@ import { V2 } from "./v2";
 import { Transform2D } from "./transform2d";
 import { fillCircle } from "./raster";
 import { parseColor, NAMED } from "./color";
+import { ViewportManager } from "./viewport";
 
 export function rotatePoint(p: V2, center: V2, angle: number): V2 { return p.rotate(angle, center); }
 
@@ -35,9 +36,13 @@ export class Intercepts {
     }
     return out;
   }
-  static drawX(app: any, graph: { vp: { worldToCanvas: (x: number, y: number) => V2 } }, series: V2[], color: string | readonly [number, number, number, number] = "yellow"): void {
-    const col = parseColor(color) || NAMED.yellow; const xs = Intercepts.findX(series);
-    for (const x of xs) { const p = graph.vp.worldToCanvas(x, 0); fillCircle(app as any, new V2((p.x + 0.5) | 0, (p.y + 0.5) | 0), 5, col); }
+  static drawX(app: any, vp: ViewportManager, series: V2[], color = "yellow") {
+    const col = parseColor(color) || NAMED.yellow;
+    const xs = Intercepts.findX(series);
+    for (const x of xs) {
+      const p = vp.worldToCanvas(x, 0);
+      fillCircle(app, new V2((p.x + 0.5) | 0, (p.y + 0.5) | 0), 5, col);
+    }
   }
-}
 
+}

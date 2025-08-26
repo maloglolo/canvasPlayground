@@ -6,3 +6,4 @@ a.txt
 b.txt
 tests/canvas.spec.ts-snapshots/*
 test-results
+.DS_Store

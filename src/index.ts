@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File: src/index.ts
-// Public API barrel – import from here 
+// Public API barrel
 // ─────────────────────────────────────────────────────────────────────────────
 
 export * from "./types";
@@ -15,3 +15,5 @@ export * from "./raster";
 export * from "./graph";
 export * from "./drawables";
 export * from "./tools";
+
+

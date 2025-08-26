@@ -122,4 +122,3 @@ export function drawCircleOutline(app: CanvasRenderer, c: V2, r: number, color: 
   for (let i = 0; i < segments; i++) { const t = (i / segments) * Math.PI * 2; pts.push(new V2(c.x + r * Math.cos(t), c.y + r * Math.sin(t))); }
   strokeShape(app, pts, color, width);
 }
-

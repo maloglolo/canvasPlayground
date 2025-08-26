@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // File: src/renderer.ts
-// CanvasRenderer + DynamicCanvasRenderer: DOM canvas ←→ PixelBuffer bridge
+// DOM canvas ←→ PixelBuffer bridge
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { V2 } from "./v2";
