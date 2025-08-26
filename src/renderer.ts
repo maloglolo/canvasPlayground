@@ -75,7 +75,13 @@ export class CanvasRenderer {
     const { width: tw, height: th } = entry;
     let ox = 0, oy = 0;
     switch (align) { case "center": ox = -tw / 2; break; case "right": case "end": ox = -tw; break; }
-    switch (baseline) { case "middle": oy = -th / 2; break; case "bottom": case "ideographic": case "alphabetic": oy = -th; break; }
+    switch (baseline) {
+      case "top": oy = 0; break;
+      case "middle": oy = -th / 2; break;
+      case "bottom": case "ideographic": oy = -th; break;
+      case "alphabetic": oy = -th; break;
+    }
+
 
     this.blitImageData(entry, (pos.x + ox + 0.5) | 0, (pos.y + oy + 0.5) | 0);
   }

@@ -15,26 +15,35 @@ import {
 import { parseColor } from "./color";
 import { ViewportManager } from "./viewport";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Base class
-// ─────────────────────────────────────────────────────────────────────────────
+export type LegendSymbol = "line" | "marker" | "area";
+
+export interface LegendMetadata {
+  label: string;
+  color?: string;
+  symbol?: LegendSymbol;
+}
 
 export abstract class Drawable {
+
+  public legend?: LegendMetadata;
+
   constructor(
     public color: string | readonly [number, number, number, number] = "white",
     public fill: boolean = false,
     public fillColor: string | readonly [number, number, number, number] | null = null,
-    public transform: Transform2D = Transform2D.identity()
+    public transform: Transform2D = Transform2D.identity(),
+    legend?: LegendMetadata
   ) {
     if (!this.fillColor) this.fillColor = color;
+    this.legend = legend;
   }
 
-  /** 
+  /**
    * Draw the shape.
    * @param app - rendering backend (canvas wrapper)
    * @param vp - viewport for coordinate transforms
    */
-  abstract draw(app: any, vp: ViewportManager): void;
+   abstract draw(app: any, vp?: ViewportManager): void;
 
   protected parseColorSafe(
     input: string | readonly [number, number, number, number]
@@ -48,18 +57,25 @@ export abstract class Drawable {
   }
 }
 
-
 export class DrawableFunction extends Drawable {
   public baselineY: number;
 
   constructor(
     public data: V2[],
-    opts: { color?: string; fill?: boolean; fillColor?: string; baselineY?: number } = {}
+    opts: {
+      color?: string;
+      fill?: boolean;
+      fillColor?: string;
+      baselineY?: number;
+      legend?: LegendMetadata;
+    } = {}
   ) {
     super(
       opts.color ?? "red",
       opts.fill ?? false,
-      opts.fillColor ?? "rgba(255,0,0,0.3)"
+      opts.fillColor ?? "rgba(255,0,0,0.3)",
+      Transform2D.identity(),
+      opts.legend
     );
     this.baselineY = opts.baselineY ?? 0;
   }
@@ -91,13 +107,20 @@ export class DrawableCircle extends Drawable {
   constructor(
     public center: V2 = new V2(0, 0),
     public radius: number = 1,
-    opts: { color?: string; fill?: boolean; fillColor?: string; transform?: Transform2D } = {}
+    opts: {
+      color?: string;
+      fill?: boolean;
+      fillColor?: string;
+      transform?: Transform2D;
+      legend?: LegendMetadata;
+    } = {}
   ) {
     super(
       opts.color ?? "white",
       opts.fill ?? false,
       opts.fillColor ?? null,
-      opts.transform ?? Transform2D.identity()
+      opts.transform ?? Transform2D.identity(),
+      opts.legend
     );
   }
 
@@ -118,13 +141,19 @@ export class DrawableLine extends Drawable {
   constructor(
     public p1: V2,
     public p2: V2,
-    opts: { color?: string; width?: number; transform?: Transform2D } = {}
+    opts: {
+      color?: string;
+      width?: number;
+      transform?: Transform2D;
+      legend?: LegendMetadata;
+    } = {}
   ) {
     super(
       opts.color ?? "yellow",
       false,
       null,
-      opts.transform ?? Transform2D.identity()
+      opts.transform ?? Transform2D.identity(),
+      opts.legend
     );
     this.width = Math.max(1, (opts.width ?? 2) | 0);
   }
@@ -149,9 +178,16 @@ export class DrawablePoint extends Drawable {
       type?: "circle" | "cross" | "square";
       size?: number;
       transform?: Transform2D;
+      legend?: LegendMetadata;
     } = {}
   ) {
-    super(opts.color ?? "white", false, null, opts.transform ?? Transform2D.identity());
+    super(
+      opts.color ?? "white",
+      false,
+      null,
+      opts.transform ?? Transform2D.identity(),
+      opts.legend
+    );
     this.type = opts.type ?? "circle";
     this.size = opts.size ?? 3;
   }
@@ -178,13 +214,15 @@ export class DrawableTriangle extends Drawable {
       fill?: boolean;
       fillColor?: string;
       transform?: Transform2D;
+      legend?: LegendMetadata;
     } = {}
   ) {
     super(
       opts.color ?? "yellow",
       opts.fill ?? true,
       opts.fillColor ?? "rgba(255,255,0,0.5)",
-      opts.transform ?? Transform2D.identity()
+      opts.transform ?? Transform2D.identity(),
+      opts.legend
     );
     this.points = [p1, p2, p3];
   }
@@ -214,9 +252,16 @@ export class DrawableText extends Drawable {
       align?: CanvasTextAlign;
       baseline?: CanvasTextBaseline;
       transform?: Transform2D;
+      legend?: LegendMetadata;
     } = {}
   ) {
-    super(opts.color ?? "white", false, null, opts.transform ?? Transform2D.identity());
+    super(
+      opts.color ?? "white",
+      false,
+      null,
+      opts.transform ?? Transform2D.identity(),
+      opts.legend
+    );
     this.font = opts.font ?? "14px sans-serif";
     this.align = opts.align ?? "left";
     this.baseline = opts.baseline ?? "alphabetic";
@@ -236,7 +281,6 @@ export class DrawableText extends Drawable {
   }
 }
 
-
 export class DrawableLabel extends Drawable {
   public mode: "world" | "canvas";
   public font: string;
@@ -253,9 +297,16 @@ export class DrawableLabel extends Drawable {
       align?: CanvasTextAlign;
       baseline?: CanvasTextBaseline;
       transform?: Transform2D;
+      legend?: LegendMetadata;
     } = {}
   ) {
-    super(opts.color ?? "white", false, null, opts.transform ?? Transform2D.identity());
+    super(
+      opts.color ?? "white",
+      false,
+      null,
+      opts.transform ?? Transform2D.identity(),
+      opts.legend
+    );
     this.mode = opts.mode ?? "world";
     this.font = opts.font ?? "14px sans-serif";
     this.align = opts.align ?? "left";

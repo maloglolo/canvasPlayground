@@ -15,5 +15,6 @@ export * from "./raster";
 export * from "./graph";
 export * from "./drawables";
 export * from "./tools";
-
+export * from "./scene";
+export * from "./debugUI";
 

@@ -1,5 +1,4 @@
-// src/canvasLib.ts
-
+// canvasLib.ts
 export * from "./graph";
 export * from "./drawables";
 export * from "./viewport";
@@ -12,7 +11,12 @@ export * from "./pixelbuffer";
 export * from "./textCache";
 export * from "./tools";
 export * from "./types";
+export * from "./scene";
+export * from "./debugUI";
 
+
+import { DrawableLegend } from "./legend";
+export { DrawableLegend };
 export { ViewportManager, getDivViewport } from "./viewport";
 export { DynamicCanvasRenderer } from "./renderer";
 export { Intercepts, projectYRotation } from "./tools";
