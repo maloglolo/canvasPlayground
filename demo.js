@@ -34,6 +34,8 @@ for (let key of Object.keys(apps)) {
   viewports[key] = new ViewportManager(apps[key], null, () => getDivViewport(div), "fit");
 }
 
+viewports.signal.preserveAspect = "none";
+
 // -------------------- DATA --------------------
 const baseTimeSeries = Array.from({ length: 500 }, (_, i) => {
   const t = i * 0.01;
@@ -157,11 +159,16 @@ sceneManager.attachWindowResize();
 
 // -------------------- ANIMATION HELPERS --------------------
 function interpolateFrames(drawable, frames, frameA, frameB, t) {
+  if (!frames[frameA] || !frames[frameB]) {
+    console.warn("Invalid frame indices:", frameA, frameB, frames.length);
+    return;
+  }
   drawable.data = frames[frameA].map((pt, i) => {
     const y1 = frames[frameA][i].y, y2 = frames[frameB][i].y;
     return new V2(pt.x, y1 * (1 - t) + y2 * t);
   });
 }
+
 
 function rotateTriangles(triangles, angle) {
   triangles.forEach(({ original, drawable }) => {

@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // File: src/graph.ts
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 
 import { V2 } from "./v2";
 import { ViewportManager, getDrawableBounds } from "./viewport";
@@ -123,45 +123,26 @@ export class Graph {
     return ticks;
   }
 
-  private autoScaleTicks(world: { xMin: number; xMax: number; yMin: number; yMax: number }): void {
+  private autoScaleTicks() {
     if (!this.autoScale) return;
 
+    const world = this.vp.worldBounds;
     const xRange = Math.abs(world.xMax - world.xMin);
     const yRange = Math.abs(world.yMax - world.yMin);
 
-    if (xRange > 0) this.numTicksX = Math.max(2, Math.floor(xRange / 50));
-    if (yRange > 0) this.numTicksY = Math.max(2, Math.floor(yRange / 50));
+    if (xRange > 0) this.numTicksX = Math.max(2, Math.floor(this.vp.viewport.width / 80));
+    if (yRange > 0) this.numTicksY = Math.max(2, Math.floor(this.vp.viewport.height / 80));
   }
 
   /**
    * Automatically scale the Graph to fit the given drawables.
-   * Should be called once during initialization or whenever data changes.
+   * Delegates scaling to the ViewportManager.
    */
   public autoScaleToDrawables(drawables: any[], padding: number = 0.05) {
     const boundsArr = drawables.map(getDrawableBounds).filter(b => b != null);
     if (!boundsArr.length) return;
-
-    const xMin = Math.min(...boundsArr.map(b => b.xMin));
-    const xMax = Math.max(...boundsArr.map(b => b.xMax));
-    const yMin = Math.min(...boundsArr.map(b => b.yMin));
-    const yMax = Math.max(...boundsArr.map(b => b.yMax));
-
-    const width = xMax - xMin || 1;
-    const height = yMax - yMin || 1;
-    const padX = padding < 1 ? width * padding : padding;
-    const padY = padding < 1 ? height * padding : padding;
-
-    const worldBounds = {
-      xMin: xMin - padX,
-      xMax: xMax + padX,
-      yMin: yMin - padY,
-      yMax: yMax + padY
-    };
-
-    this.vp.fitToBounds([worldBounds], 0);
-    this.vp.updateWorld(worldBounds);
+    this.vp.fitToBounds(boundsArr, padding);
   }
-
 
   draw(app: { drawText: (...args: any[]) => void }): void {
     const vpRect = this.vp.viewport;
@@ -169,7 +150,7 @@ export class Graph {
     if (!vpRect || !world) return;
 
     if (this.autoScale) {
-      this.autoScaleTicks(world);
+      this.autoScaleTicks();
     }
 
     const xTicks = this.computeTicks(world.xMin, world.xMax, this.numTicksX);

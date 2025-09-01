@@ -22,9 +22,8 @@ html {
 }
 
 #mainCanvas {
-
     width: 100%;
-    height: 400px;
+    height: 100%; /* match wrapper */
     border: 1px solid #333;
-    margin-top: 20px;
+    margin-top: 0; /* optional */
 }
