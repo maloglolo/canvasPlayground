@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { V2 } from "./v2";
-import { ViewportManager } from "./viewport";
+import { ViewportManager, getDrawableBounds } from "./viewport";
 import { parseColor } from "./color";
 import type { RGBA } from "./types";
 import { drawLine } from "./raster";
@@ -31,14 +31,15 @@ export interface GraphOptions {
   axisColor?: string;
   borderColor?: string;
   tickSizePx?: number;
-  tickThickness?: number;   
-  axisThickness?: number;   
-  font?: string;            
-  textColor?: string;       
+  tickThickness?: number;
+  axisThickness?: number;
+  font?: string;
+  textColor?: string;
   margin?: number;
-  labelOffset?: number;    
+  labelOffset?: number;
   numTicksX?: number;
   numTicksY?: number;
+  autoScale?: boolean;
 }
 
 export class Graph {
@@ -62,6 +63,7 @@ export class Graph {
 
   public numTicksX: number;
   public numTicksY: number;
+  public autoScale: boolean;
 
   public axisXPos: number;
   public axisYPos: number;
@@ -87,6 +89,7 @@ export class Graph {
 
     this.numTicksX = options.numTicksX ?? 5;
     this.numTicksY = options.numTicksY ?? 5;
+    this.autoScale = options.autoScale ?? false;
 
     this.axisXPos = 0;
     this.axisYPos = 0;
@@ -104,102 +107,144 @@ export class Graph {
   }
 
   private computeTicks(min: number, max: number, n: number): number[] {
+    if (!isFinite(min) || !isFinite(max) || n <= 0) return [];
     const range = max - min;
     if (range === 0) return [min];
+
     const stepRaw = range / n;
     const magnitude = Math.pow(10, Math.floor(Math.log10(stepRaw)));
     const step = Math.ceil(stepRaw / magnitude) * magnitude;
 
     const first = Math.ceil(min / step) * step;
     const ticks: number[] = [];
-    for (let x = first; x <= max; x += step) ticks.push(+x.toFixed(6));
+    for (let x = first; x <= max + 1e-12; x += step) {
+      ticks.push(+x.toFixed(6));
+    }
     return ticks;
   }
 
+  private autoScaleTicks(world: { xMin: number; xMax: number; yMin: number; yMax: number }): void {
+    if (!this.autoScale) return;
+
+    const xRange = Math.abs(world.xMax - world.xMin);
+    const yRange = Math.abs(world.yMax - world.yMin);
+
+    if (xRange > 0) this.numTicksX = Math.max(2, Math.floor(xRange / 50));
+    if (yRange > 0) this.numTicksY = Math.max(2, Math.floor(yRange / 50));
+  }
+
+  /**
+   * Automatically scale the Graph to fit the given drawables.
+   * Should be called once during initialization or whenever data changes.
+   */
+  public autoScaleToDrawables(drawables: any[], padding: number = 0.05) {
+    const boundsArr = drawables.map(getDrawableBounds).filter(b => b != null);
+    if (!boundsArr.length) return;
+
+    const xMin = Math.min(...boundsArr.map(b => b.xMin));
+    const xMax = Math.max(...boundsArr.map(b => b.xMax));
+    const yMin = Math.min(...boundsArr.map(b => b.yMin));
+    const yMax = Math.max(...boundsArr.map(b => b.yMax));
+
+    const width = xMax - xMin || 1;
+    const height = yMax - yMin || 1;
+    const padX = padding < 1 ? width * padding : padding;
+    const padY = padding < 1 ? height * padding : padding;
+
+    const worldBounds = {
+      xMin: xMin - padX,
+      xMax: xMax + padX,
+      yMin: yMin - padY,
+      yMax: yMax + padY
+    };
+
+    this.vp.fitToBounds([worldBounds], 0);
+    this.vp.updateWorld(worldBounds);
+  }
+
+
   draw(app: { drawText: (...args: any[]) => void }): void {
-  const vpRect = this.vp.viewport;
-  const world = this.vp.worldBounds;
-  if (!vpRect || !world) return;
+    const vpRect = this.vp.viewport;
+    const world = this.vp.worldBounds;
+    if (!vpRect || !world) return;
 
-
-  const xTicks = this.computeTicks(world.xMin, world.xMax, this.numTicksX);
-  const yTicks = this.computeTicks(world.yMin, world.yMax, this.numTicksY);
-
-  const decimalsX = decimalsForStep(Math.abs(xTicks[1] - xTicks[0] || 1));
-  const decimalsY = decimalsForStep(Math.abs(yTicks[1] - yTicks[0] || 1));
-
-  const drawX = this.axisAtZero && world.yMin <= 0 && world.yMax >= 0 ? this.axisXPos : world.yMin;
-  const drawY = this.axisAtZero && world.xMin <= 0 && world.xMax >= 0 ? this.axisYPos : world.xMin;
-
-
-  if (this.showGrid) {
-
-    for (const x of xTicks) {
-      const p0 = this.vp.worldToCanvas(x, world.yMin);
-      const p1 = this.vp.worldToCanvas(x, world.yMax);
-      drawLine(app as any, p0, p1, this.gridColor, 1);
+    if (this.autoScale) {
+      this.autoScaleTicks(world);
     }
 
-    for (const y of yTicks) {
-      const p0 = this.vp.worldToCanvas(world.xMin, y);
-      const p1 = this.vp.worldToCanvas(world.xMax, y);
-      drawLine(app as any, p0, p1, this.gridColor, 1);
+    const xTicks = this.computeTicks(world.xMin, world.xMax, this.numTicksX);
+    const yTicks = this.computeTicks(world.yMin, world.yMax, this.numTicksY);
+
+    const decimalsX = decimalsForStep(xTicks.length > 1 ? Math.abs(xTicks[1] - xTicks[0]) : 1);
+    const decimalsY = decimalsForStep(yTicks.length > 1 ? Math.abs(yTicks[1] - yTicks[0]) : 1);
+
+    const drawX = this.axisAtZero && world.yMin <= 0 && world.yMax >= 0 ? this.axisXPos : world.yMin;
+    const drawY = this.axisAtZero && world.xMin <= 0 && world.xMax >= 0 ? this.axisYPos : world.xMin;
+
+    if (this.showGrid) {
+      for (const x of xTicks) {
+        const p0 = this.vp.worldToCanvas(x, world.yMin);
+        const p1 = this.vp.worldToCanvas(x, world.yMax);
+        drawLine(app as any, p0, p1, this.gridColor, 1);
+      }
+
+      for (const y of yTicks) {
+        const p0 = this.vp.worldToCanvas(world.xMin, y);
+        const p1 = this.vp.worldToCanvas(world.xMax, y);
+        drawLine(app as any, p0, p1, this.gridColor, 1);
+      }
+    }
+
+    if (this.showAxes) {
+      const x0 = this.vp.worldToCanvas(world.xMin, drawX);
+      const x1 = this.vp.worldToCanvas(world.xMax, drawX);
+      const y0 = this.vp.worldToCanvas(drawY, world.yMin);
+      const y1 = this.vp.worldToCanvas(drawY, world.yMax);
+
+      drawLine(app as any, x0, x1, this.axisColor, this.axisThickness);
+      drawLine(app as any, y0, y1, this.axisColor, this.axisThickness);
+    }
+
+    if (this.showTicks && this.tickSizePx > 0) {
+      const t = this.tickSizePx;
+
+      for (const x of xTicks) {
+        const canvasPos = this.vp.worldToCanvas(x, drawX);
+        drawLine(
+          app as any,
+          new V2(canvasPos.x, canvasPos.y - t / 2),
+          new V2(canvasPos.x, canvasPos.y + t / 2),
+          this.axisColor,
+          this.tickThickness
+        );
+        app.drawText(
+          fmtTick(x, decimalsX),
+          new V2(canvasPos.x, canvasPos.y + this.labelOffset),
+          this.textColor,
+          this.font,
+          "center",
+          "top"
+        );
+      }
+
+      for (const y of yTicks) {
+        const canvasPos = this.vp.worldToCanvas(drawY, y);
+        drawLine(
+          app as any,
+          new V2(canvasPos.x - t / 2, canvasPos.y),
+          new V2(canvasPos.x + t / 2, canvasPos.y),
+          this.axisColor,
+          this.tickThickness
+        );
+        app.drawText(
+          fmtTick(y, decimalsY),
+          new V2(canvasPos.x - this.labelOffset, canvasPos.y),
+          this.textColor,
+          this.font,
+          "right",
+          "middle"
+        );
+      }
     }
   }
-
-  if (this.showAxes) {
-    const x0 = this.vp.worldToCanvas(world.xMin, drawX);
-    const x1 = this.vp.worldToCanvas(world.xMax, drawX);
-    const y0 = this.vp.worldToCanvas(drawY, world.yMin);
-    const y1 = this.vp.worldToCanvas(drawY, world.yMax);
-
-    drawLine(app as any, x0, x1, this.axisColor, this.axisThickness);
-    drawLine(app as any, y0, y1, this.axisColor, this.axisThickness);
-  }
-
-
-  if (this.showTicks && this.tickSizePx > 0) {
-    const t = this.tickSizePx;
-
-
-    for (const x of xTicks) {
-      const canvasPos = this.vp.worldToCanvas(x, drawX);
-      drawLine(
-        app as any,
-        new V2(canvasPos.x, canvasPos.y - t / 2),
-        new V2(canvasPos.x, canvasPos.y + t / 2),
-        this.axisColor,
-        this.tickThickness
-      );
-      app.drawText(
-        fmtTick(x, decimalsX),
-        new V2(canvasPos.x, canvasPos.y + this.labelOffset),
-        this.textColor,
-        this.font,
-        "center",
-        "top"
-      );
-    }
-
-
-    for (const y of yTicks) {
-      const canvasPos = this.vp.worldToCanvas(drawY, y);
-      drawLine(
-        app as any,
-        new V2(canvasPos.x - t / 2, canvasPos.y),
-        new V2(canvasPos.x + t / 2, canvasPos.y),
-        this.axisColor,
-        this.tickThickness
-      );
-      app.drawText(
-        fmtTick(y, decimalsY),
-        new V2(canvasPos.x - this.labelOffset, canvasPos.y),
-        this.textColor,
-        this.font,
-        "right",
-        "middle"
-      );
-    }
-  }
-}
 }

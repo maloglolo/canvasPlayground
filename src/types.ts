@@ -12,3 +12,4 @@ export interface Rect { x: number; y: number; width: number; height: number }
 
 export interface WorldBounds { xMin: number; xMax: number; yMin: number; yMax: number }
 
+export type ViewportRect = { x: number; y: number; width: number; height: number };
